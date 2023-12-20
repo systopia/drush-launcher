@@ -114,7 +114,7 @@ if ($DEBUG) {
 if ($drupalFinder->locateRoot($ROOT)) {
   $drupalRoot = $drupalFinder->getDrupalRoot();
 
-  // Detect Drush version
+  // Detect Drush version (up to Drush 11).
   $drush_info_file = Path::join($drupalFinder->getVendorDir(), 'drush/drush/drush.info');
   if (file_exists($drush_info_file)) {
     $drush_info_values = parse_ini_file($drush_info_file);
@@ -123,21 +123,32 @@ if ($drupalFinder->locateRoot($ROOT)) {
       $DRUSH_VERSION = (int) $DRUSH_VERSION;
     }
   }
+  elseif (is_dir(Path::join($drupalFinder->getVendorDir(), 'drush/drush'))) {
+    // This is probably Drush 12 or up.
+    $DRUSH_VERSION = 12;
+  }
 
-  if ($DRUSH_VERSION === 11 || $DRUSH_VERSION === 10 || $DRUSH_VERSION === 9) {
+  if ($DRUSH_VERSION === 12 || $DRUSH_VERSION === 11 || $DRUSH_VERSION === 10 || $DRUSH_VERSION = 9) {
     $xdebug = new XdebugHandler('drush', '--ansi');
     $xdebug->check();
     unset($xdebug);
   }
 
   if ($DEBUG) {
-    echo "DRUSH VERSION: " . $DRUSH_VERSION . PHP_EOL;
+    echo "DRUSH VERSION: " . ($DRUSH_VERSION === 12 ? '12+' : $DRUSH_VERSION) . PHP_EOL;
     echo "DRUPAL ROOT: " . $drupalRoot . PHP_EOL;
     echo "COMPOSER ROOT: " . $drupalFinder->getComposerRoot() . PHP_EOL;
     echo "VENDOR ROOT: " . $drupalFinder->getVendorDir() . PHP_EOL;
   }
 
-  if ($DRUSH_VERSION === 11 || $DRUSH_VERSION === 10 || $DRUSH_VERSION === 9) {
+  if ($DRUSH_VERSION === 12) {
+    // Do not use includes/preflight.inc but set Composer global variables and
+    // require the Drush script directly.
+    $_composer_autoload_path = $drupalFinder->getVendorDir() . '/autoload.php';
+    $_composer_bin_dir = $drupalFinder->getVendorDir() . '/bin';
+    require $drupalFinder->getVendorDir(). '/drush/drush/drush.php';
+  }
+  elseif ($DRUSH_VERSION === 11 || $DRUSH_VERSION === 10 || $DRUSH_VERSION === 9) {
     require_once $drupalFinder->getVendorDir() . '/drush/drush/includes/preflight.inc';
     // Drush 11, 10 and 9 manages two autoloaders.
     exit(drush_main());
